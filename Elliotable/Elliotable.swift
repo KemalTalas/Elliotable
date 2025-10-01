@@ -33,8 +33,13 @@ public enum roundOption: Int {
     private let controller     = ElliotableController()
     private let collectionView = UICollectionView(frame: CGRect.zero, collectionViewLayout: UICollectionViewFlowLayout())
     
-    public let defaultMinHour: Int = 9
-    public let defaultMaxEnd : Int = 17
+// defaultMinHour ve defaultMaxEnd artık public, 0–24 aralığı için
+    @IBInspectable public var defaultMinHour: Int = 0 {
+    didSet { makeTimeTable() }
+    }
+    @IBInspectable public var defaultMaxEnd: Int = 24 {
+    didSet { makeTimeTable() }
+    }
     
     public var userDaySymbol: [String]?
     public var delegate: ElliotableDelegate?
@@ -238,8 +243,19 @@ public enum roundOption: Int {
     }
     
     private func makeTimeTable() {
-        var minStartTimeHour: Int = 24
-        var maxEndTimeHour: Int = 0
+    var minStartTimeHour: Int = defaultMinHour
+    var maxEndTimeHour: Int = defaultMaxEnd
+
+    if courseItems.count > 0 {
+        for courseItem in courseItems {
+            let startHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? defaultMinHour
+            let endHour   = Int(courseItem.endTime.split(separator: ":")[0]) ?? defaultMaxEnd
+        
+            if startHour < minStartTimeHour { minStartTimeHour = startHour }
+            if endHour > maxEndTimeHour { maxEndTimeHour = endHour }
+        }
+    }
+    minimumCourseStartTime = minStartTimeHour
         
         collectionView.reloadData()
         collectionView.collectionViewLayout.invalidateLayout()
@@ -288,11 +304,11 @@ public enum roundOption: Int {
             let dayCount = dataSource?.numberOfDays(in: self) ?? 6
             let weekdayIndex = (courseItem.courseDay.rawValue - startDay.rawValue + dayCount) % dayCount
             
-            let courseStartHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? 09
-            let courseStartMin  = Int(courseItem.startTime.split(separator: ":")[1]) ?? 00
-            
-            let courseEndHour = Int(courseItem.endTime.split(separator: ":")[0]) ?? 18
-            let courseEndMin  = Int(courseItem.endTime.split(separator: ":")[1]) ?? 00
+            let courseStartHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? defaultMinHour
+            let courseStartMin  = Int(courseItem.startTime.split(separator: ":")[1]) ?? 0
+
+            let courseEndHour = Int(courseItem.endTime.split(separator: ":")[0]) ?? defaultMaxEnd
+            let courseEndMin  = Int(courseItem.endTime.split(separator: ":")[1]) ?? 0
             let averageHeight = courseItemHeight
             
             // Cell X Position and Y Position
