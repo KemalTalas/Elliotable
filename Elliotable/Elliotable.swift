@@ -242,76 +242,157 @@ public enum roundOption: Int {
         makeTimeTable()
     }
     
-private func makeTimeTable() {
-    collectionView.reloadData()
-    collectionView.collectionViewLayout.invalidateLayout()
-    
-    // Eski subview'ları temizle
-    for subview in collectionView.subviews where !(subview is UICollectionViewCell) {
-        subview.removeFromSuperview()
-    }
-    
-    let totalHours = 24 // 0..23
-    let hourHeight = courseItemHeight
-    let dayCount = dataSource?.numberOfDays(in: self) ?? 7
-    let averageWidth = (collectionView.bounds.width - widthOfTimeAxis) / CGFloat(dayCount)
-    
-    // Saat çizgileri ve etiketler
-    for hour in 0..<totalHours {
-        let yPosition = heightOfDaySection + CGFloat(hour) * hourHeight
-        let line = UIView(frame: CGRect(x: widthOfTimeAxis, y: yPosition, width: collectionView.bounds.width - widthOfTimeAxis, height: 0.5))
-        line.backgroundColor = UIColor.lightGray.withAlphaComponent(0.3)
-        collectionView.addSubview(line)
-        
-        let label = UILabel(frame: CGRect(x: 0, y: yPosition - 7, width: widthOfTimeAxis - 4, height: 14))
-        label.text = String(format: "%02d:00", hour)
-        label.font = UIFont.systemFont(ofSize: 10)
-        label.textAlignment = .right
-        label.textColor = .darkGray
-        collectionView.addSubview(label)
-    }
-    
-    // Courses ekleme
-    let courseItems = self.dataSource?.courseItems(in: self) ?? []
-    for (index, course) in courseItems.enumerated() {
-        let weekdayIndex = (course.courseDay.rawValue - startDay.rawValue + dayCount) % dayCount
-        
-        let startHour = Int(course.startTime.split(separator: ":")[0]) ?? 0
-        let startMin  = Int(course.startTime.split(separator: ":")[1]) ?? 0
-        let endHour   = Int(course.endTime.split(separator: ":")[0]) ?? 0
-        let endMin    = Int(course.endTime.split(separator: ":")[1]) ?? 0
-        
-        let posX = widthOfTimeAxis + CGFloat(weekdayIndex) * averageWidth
-        let posY = heightOfDaySection + CGFloat(startHour) * hourHeight + (CGFloat(startMin)/60.0) * hourHeight
-        let height = CGFloat(endHour - startHour) * hourHeight + (CGFloat(endMin - startMin)/60.0) * hourHeight
-        
-        let courseView = UIView(frame: CGRect(x: posX, y: posY, width: averageWidth, height: height))
-        courseView.backgroundColor = course.backgroundColor
-        courseView.layer.cornerRadius = borderCornerRadius
-        courseView.clipsToBounds = true
-        
-        let label = PaddingLabel(frame: CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: courseView.frame.width - textEdgeInsets.left - textEdgeInsets.right, height: courseView.frame.height - textEdgeInsets.top))
-        label.text = course.courseName
-        label.textColor = course.textColor ?? .white
-        label.numberOfLines = 0
-        label.font = UIFont.boldSystemFont(ofSize: courseItemTextSize)
-        label.textAlignment = courseTextAlignment
-        label.sizeToFit()
-        label.frame = CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: courseView.frame.width - textEdgeInsets.left - textEdgeInsets.right, height: label.bounds.height)
-        courseView.addSubview(label)
-        
-        courseView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(lectureTapped)))
-        courseView.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(lectureLongPressed)))
-        courseView.tag = index
-        label.tag = index
-        
-        collectionView.addSubview(courseView)
-    }
-    
-    // Sabit content size
-    collectionView.contentSize = CGSize(width: collectionView.bounds.width, height: heightOfDaySection + CGFloat(totalHours) * hourHeight)
-}
+    private func makeTimeTable() {
+    var minStartTimeHour: Int = defaultMinHour
+    var maxEndTimeHour: Int = defaultMaxEnd
 
+    if courseItems.count > 0 {
+        for courseItem in courseItems {
+            let startHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? defaultMinHour
+            let endHour   = Int(courseItem.endTime.split(separator: ":")[0]) ?? defaultMaxEnd
+        
+            if startHour < minStartTimeHour { minStartTimeHour = startHour }
+            if endHour > maxEndTimeHour { maxEndTimeHour = endHour }
+        }
+    }
+    minimumCourseStartTime = minStartTimeHour
+        
+        collectionView.reloadData()
+        collectionView.collectionViewLayout.invalidateLayout()
+        
+        for subview in collectionView.subviews {
+            if !(subview is UICollectionViewCell) {
+                subview.removeFromSuperview()
+            }
+        }
+        
+        for subview in subviews {
+            if !(subview is UICollectionView) {
+                subview.removeFromSuperview()
+            }
+        }
+        // DataSource Delegate
+        let courseItems = self.dataSource?.courseItems(in: self) ?? [ElliottEvent]()
+        
+        if courseItems.count < 1 {
+            minStartTimeHour = defaultMinHour
+            maxEndTimeHour = defaultMaxEnd
+        } else {
+            // Calculate Min StartTime
+            for (index, courseItem) in courseItems.enumerated() {
+                let tempStartTimeHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? 24
+                let tempEndTimeHour   = Int(courseItem.endTime.split(separator: ":")[0]) ?? 00
+                
+                if index < 1 {
+                    minStartTimeHour = tempStartTimeHour
+                    maxEndTimeHour   = tempEndTimeHour
+                } else {
+                    if tempStartTimeHour < minStartTimeHour {
+                        minStartTimeHour = tempStartTimeHour
+                    }
+                    
+                    if tempEndTimeHour > maxEndTimeHour {
+                        maxEndTimeHour = tempEndTimeHour
+                    }
+                }
+            }
+            maxEndTimeHour += 1
+        }
+        minimumCourseStartTime = minStartTimeHour
+        
+        for (index, courseItem) in courseItems.enumerated() {
+            let dayCount = dataSource?.numberOfDays(in: self) ?? 6
+            let weekdayIndex = (courseItem.courseDay.rawValue - startDay.rawValue + dayCount) % dayCount
+            
+            let courseStartHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? defaultMinHour
+            let courseStartMin  = Int(courseItem.startTime.split(separator: ":")[1]) ?? 0
+
+            let courseEndHour = Int(courseItem.endTime.split(separator: ":")[0]) ?? defaultMaxEnd
+            let courseEndMin  = Int(courseItem.endTime.split(separator: ":")[1]) ?? 0
+            let averageHeight = courseItemHeight
+            
+            // Cell X Position and Y Position
+            let position_x = collectionView.bounds.minX + widthOfTimeAxis + averageWidth * CGFloat(weekdayIndex) + rectEdgeInsets.left
+            
+            // 요일 높이 + 평균 셀 높이 * 시간 차이 개수 + 분에 대한 추가 여백
+            let position_y = collectionView.frame.minY + heightOfDaySection + averageHeight * CGFloat(courseStartHour - minStartTimeHour) +
+                CGFloat((CGFloat(courseStartMin) / 60) * averageHeight) + rectEdgeInsets.top
+            
+            let width = averageWidth
+            let height = averageHeight * CGFloat(courseEndHour - courseStartHour) +
+                CGFloat((CGFloat(courseEndMin - courseStartMin) / 60) * averageHeight) - rectEdgeInsets.top - rectEdgeInsets.bottom
+            
+            // MARK: Elliotable Course Item Cell
+            let view = UIView(frame: CGRect(x: position_x, y: position_y, width: width, height: height))
+            view.backgroundColor = courseItem.backgroundColor
+            
+            switch(self.roundCorner) {
+            case roundOption.none:
+                view.layer.cornerRadius = 0
+                break
+            case roundOption.left:
+                let path = UIBezierPath(roundedRect:view.bounds,
+                                        byRoundingCorners:[.topLeft, .bottomRight],
+                                        cornerRadii: CGSize(width: self.borderCornerRadius, height: self.borderCornerRadius))
+                let maskLayer = CAShapeLayer()
+                maskLayer.path = path.cgPath
+                view.layer.mask = maskLayer
+                break
+            case roundOption.right:
+                let path = UIBezierPath(roundedRect:view.bounds,
+                                        byRoundingCorners:[.topRight, .bottomLeft],
+                                        cornerRadii: CGSize(width: self.borderCornerRadius, height: self.borderCornerRadius))
+                let maskLayer = CAShapeLayer()
+                maskLayer.path = path.cgPath
+                view.layer.mask = maskLayer
+                break
+            case roundOption.all:
+                // To Support under iOS 11
+                let path = UIBezierPath(roundedRect:view.bounds,
+                                        byRoundingCorners:[.topRight, .topLeft, .bottomLeft, .bottomRight],
+                                        cornerRadii: CGSize(width: self.borderCornerRadius, height: self.borderCornerRadius))
+                let maskLayer = CAShapeLayer()
+                maskLayer.path = path.cgPath
+                view.layer.mask = maskLayer
+                break
+            }
+            
+            let label = PaddingLabel(frame: CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: view.frame.width - textEdgeInsets.right, height: view.frame.height - textEdgeInsets.top))
+            var name = courseItem.courseName
+            
+            if courseItemMaxNameLength > 0 {
+                name.truncate(courseItemMaxNameLength)
+            }
+            
+            let attrStr = NSMutableAttributedString(string: name + "\n" + courseItem.roomName, attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: roomNameFontSize)])
+            attrStr.setAttributes([NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: courseItemTextSize)], range: NSRange(0..<name.count))
+            
+            label.attributedText = attrStr
+            label.textColor      = courseItem.textColor ?? UIColor.white
+            label.numberOfLines  = 0
+            label.tag            = index
+            view.tag             = index
+            
+            if courseTextAlignment == .right {
+                label.textAlignment = .right
+            } else {
+                label.textAlignment = courseTextAlignment
+            }
+            
+            label.lineBreakMode = NSLineBreakMode.byWordWrapping
+            label.sizeToFit()
+            label.frame = CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: view.frame.width - textEdgeInsets.left - textEdgeInsets.right, height: label.bounds.height + 40)
+            label.sizeToFit()
+            label.frame = CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: view.frame.width - textEdgeInsets.left - textEdgeInsets.right, height: label.bounds.height)
+            
+            view.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(lectureLongPressed)))
+            view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(lectureTapped)))
+            
+            view.isUserInteractionEnabled = true
+            view.addSubview(label)
+            collectionView.addSubview(view)
+        }
+    }
     
     @objc func lectureLongPressed(_ sender: UILongPressGestureRecognizer) {
         if sender.state == .began {
