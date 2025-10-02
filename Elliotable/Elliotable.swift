@@ -244,181 +244,132 @@ public enum roundOption: Int {
         makeTimeTable()
     }
     
-    private func makeTimeTable() {
+private func makeTimeTable() {
     var minStartTimeHour: Int = defaultMinHour
     var maxEndTimeHour: Int = defaultMaxEnd
 
-    if courseItems.count > 0 {
+    // courseItems üzerinden min/max saat hesapla
+    if !courseItems.isEmpty {
         for courseItem in courseItems {
             let startHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? defaultMinHour
             let endHour   = Int(courseItem.endTime.split(separator: ":")[0]) ?? defaultMaxEnd
-        
+
             if startHour < minStartTimeHour { minStartTimeHour = startHour }
             if endHour > maxEndTimeHour { maxEndTimeHour = endHour }
         }
     }
     minimumCourseStartTime = minStartTimeHour
-        
-        collectionView.reloadData()
-        collectionView.collectionViewLayout.invalidateLayout()
-        
-        for subview in collectionView.subviews {
-            if !(subview is UICollectionViewCell) {
-                subview.removeFromSuperview()
-            }
-        }
-        
-        for subview in subviews {
-            if !(subview is UICollectionView) {
-                subview.removeFromSuperview()
-            }
-        }
-        // DataSource Delegate
-        self.courseItems = self.dataSource?.courseItems(in: self) ?? []
-        
-        if courseItems.count < 1 {
-            minStartTimeHour = defaultMinHour
-            maxEndTimeHour = defaultMaxEnd
-        } else {
-            // Calculate Min StartTime
-            for (index, courseItem) in courseItems.enumerated() {
-                let tempStartTimeHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? 24
-                let tempEndTimeHour   = Int(courseItem.endTime.split(separator: ":")[0]) ?? 00
-                
-                if index < 1 {
-                    minStartTimeHour = tempStartTimeHour
-                    maxEndTimeHour   = tempEndTimeHour
-                } else {
-                    if tempStartTimeHour < minStartTimeHour {
-                        minStartTimeHour = tempStartTimeHour
-                    }
-                    
-                    if tempEndTimeHour > maxEndTimeHour {
-                        maxEndTimeHour = tempEndTimeHour
-                    }
-                }
-            }
-            maxEndTimeHour += 1
-        }
-        minimumCourseStartTime = minStartTimeHour
-        
-        for (index, courseItem) in courseItems.enumerated() {
-            let dayCount = dataSource?.numberOfDays(in: self) ?? 6
-            let weekdayIndex = (courseItem.courseDay.rawValue - startDay.rawValue + dayCount) % dayCount
-            
-            let courseStartHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? defaultMinHour
-            let courseStartMin  = Int(courseItem.startTime.split(separator: ":")[1]) ?? 0
 
-            let courseEndHour = Int(courseItem.endTime.split(separator: ":")[0]) ?? defaultMaxEnd
-            let courseEndMin  = Int(courseItem.endTime.split(separator: ":")[1]) ?? 0
-            let averageHeight = courseItemHeight
-            
-            // Cell X Position and Y Position
-            let position_x = collectionView.bounds.minX + widthOfTimeAxis + averageWidth * CGFloat(weekdayIndex) + rectEdgeInsets.left
-            
-            // 요일 높이 + 평균 셀 높이 * 시간 차이 개수 + 분에 대한 추가 여백
-            let position_y = collectionView.frame.minY + heightOfDaySection + averageHeight * CGFloat(courseStartHour - minStartTimeHour) +
-                CGFloat((CGFloat(courseStartMin) / 60) * averageHeight) + rectEdgeInsets.top
-            
-            let width = averageWidth
-            let height = averageHeight * CGFloat(courseEndHour - courseStartHour) +
-                CGFloat((CGFloat(courseEndMin - courseStartMin) / 60) * averageHeight) - rectEdgeInsets.top - rectEdgeInsets.bottom
-            
-            // MARK: Elliotable Course Item Cell
-            let view = UIView(frame: CGRect(x: position_x, y: position_y, width: width, height: height))
-            view.backgroundColor = courseItem.backgroundColor
-            
-            switch(self.roundCorner) {
-            case roundOption.none:
-                view.layer.cornerRadius = 0
-                break
-            case roundOption.left:
-                let path = UIBezierPath(roundedRect:view.bounds,
-                                        byRoundingCorners:[.topLeft, .bottomRight],
-                                        cornerRadii: CGSize(width: self.borderCornerRadius, height: self.borderCornerRadius))
-                let maskLayer = CAShapeLayer()
-                maskLayer.path = path.cgPath
-                view.layer.mask = maskLayer
-                break
-            case roundOption.right:
-                let path = UIBezierPath(roundedRect:view.bounds,
-                                        byRoundingCorners:[.topRight, .bottomLeft],
-                                        cornerRadii: CGSize(width: self.borderCornerRadius, height: self.borderCornerRadius))
-                let maskLayer = CAShapeLayer()
-                maskLayer.path = path.cgPath
-                view.layer.mask = maskLayer
-                break
-            case roundOption.all:
-                // To Support under iOS 11
-                let path = UIBezierPath(roundedRect:view.bounds,
-                                        byRoundingCorners:[.topRight, .topLeft, .bottomLeft, .bottomRight],
-                                        cornerRadii: CGSize(width: self.borderCornerRadius, height: self.borderCornerRadius))
-                let maskLayer = CAShapeLayer()
-                maskLayer.path = path.cgPath
-                view.layer.mask = maskLayer
-                break
-            }
-            
-            let label = PaddingLabel(frame: CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: view.frame.width - textEdgeInsets.right, height: view.frame.height - textEdgeInsets.top))
-            var name = courseItem.courseName
-            
-            if courseItemMaxNameLength > 0 {
-                name.truncate(courseItemMaxNameLength)
-            }
-            
-            let attrStr = NSMutableAttributedString(string: name + "\n" + courseItem.roomName, attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: roomNameFontSize)])
-            attrStr.setAttributes([NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: courseItemTextSize)], range: NSRange(0..<name.count))
-            
-            label.attributedText = attrStr
-            label.textColor      = courseItem.textColor ?? UIColor.white
-            label.numberOfLines  = 0
-            label.tag            = index
-            view.tag             = index
-            
-            if courseTextAlignment == .right {
-                label.textAlignment = .right
-            } else {
-                label.textAlignment = courseTextAlignment
-            }
-            
-            label.lineBreakMode = NSLineBreakMode.byWordWrapping
-            label.sizeToFit()
-            label.frame = CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: view.frame.width - textEdgeInsets.left - textEdgeInsets.right, height: label.bounds.height + 40)
-            label.sizeToFit()
-            label.frame = CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: view.frame.width - textEdgeInsets.left - textEdgeInsets.right, height: label.bounds.height)
-            
-            view.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(lectureLongPressed)))
-            view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(lectureTapped)))
-            
-            view.isUserInteractionEnabled = true
-            view.addSubview(label)
-                view.tag = index
-                label.tag = index
-            collectionView.addSubview(view)
+    // CollectionView layout ve reload
+    collectionView.reloadData()
+    collectionView.collectionViewLayout.invalidateLayout()
+
+    // Eskiden eklenmiş manuel course view'leri sil
+    collectionView.subviews.forEach {
+        if $0 is UIView && !($0 is UICollectionViewCell) {
+            $0.removeFromSuperview()
         }
-        // Gün başlıklarını ekle
-for (index, symbol) in daySymbols.enumerated() {
-    let labelFrame = CGRect(
-        x: collectionView.bounds.minX + widthOfTimeAxis + averageWidth * CGFloat(index),
-        y: collectionView.frame.minY,
-        width: averageWidth,
-        height: heightOfDaySection
-    )
-    let label = UILabel(frame: labelFrame)
-    label.text = symbol
-    label.textAlignment = .center
-    label.font = UIFont.systemFont(ofSize: symbolFontSize, weight: .medium)
-    label.textColor = weekDayTextColor
-    label.isUserInteractionEnabled = true
-    label.tag = index
+    }
+
+    // courseItems üzerinden yeni view ekle
+    for (index, courseItem) in courseItems.enumerated() {
+        let dayCount = dataSource?.numberOfDays(in: self) ?? 6
+        let weekdayIndex = (courseItem.courseDay.rawValue - startDay.rawValue + dayCount) % dayCount
+
+        let startParts = courseItem.startTime.split(separator: ":").compactMap { Int($0) }
+        let endParts   = courseItem.endTime.split(separator: ":").compactMap { Int($0) }
+
+        guard startParts.count == 2, endParts.count == 2 else { continue }
+
+        let courseStartHour = startParts[0]
+        let courseStartMin  = startParts[1]
+        let courseEndHour   = endParts[0]
+        let courseEndMin    = endParts[1]
+
+        let averageHeight = courseItemHeight
+
+        let positionX = collectionView.bounds.minX + widthOfTimeAxis + averageWidth * CGFloat(weekdayIndex) + rectEdgeInsets.left
+        let positionY = collectionView.frame.minY + heightOfDaySection + averageHeight * CGFloat(courseStartHour - minStartTimeHour) +
+                        CGFloat((CGFloat(courseStartMin) / 60) * averageHeight) + rectEdgeInsets.top
+
+        let width = averageWidth
+        let height = averageHeight * CGFloat(courseEndHour - courseStartHour) +
+                     CGFloat((CGFloat(courseEndMin - courseStartMin) / 60) * averageHeight) - rectEdgeInsets.top - rectEdgeInsets.bottom
+
+        // Course view oluştur
+        let view = UIView(frame: CGRect(x: positionX, y: positionY, width: width, height: height))
+        view.backgroundColor = courseItem.backgroundColor
+        view.tag = index
+
+        // Rounded corners
+        switch roundCorner {
+        case .none: view.layer.cornerRadius = 0
+        case .left:
+            let path = UIBezierPath(roundedRect: view.bounds,
+                                    byRoundingCorners: [.topLeft, .bottomRight],
+                                    cornerRadii: CGSize(width: borderCornerRadius, height: borderCornerRadius))
+            let maskLayer = CAShapeLayer()
+            maskLayer.path = path.cgPath
+            view.layer.mask = maskLayer
+        case .right:
+            let path = UIBezierPath(roundedRect: view.bounds,
+                                    byRoundingCorners: [.topRight, .bottomLeft],
+                                    cornerRadii: CGSize(width: borderCornerRadius, height: borderCornerRadius))
+            let maskLayer = CAShapeLayer()
+            maskLayer.path = path.cgPath
+            view.layer.mask = maskLayer
+        case .all:
+            let path = UIBezierPath(roundedRect: view.bounds,
+                                    byRoundingCorners: [.topLeft, .topRight, .bottomLeft, .bottomRight],
+                                    cornerRadii: CGSize(width: borderCornerRadius, height: borderCornerRadius))
+            let maskLayer = CAShapeLayer()
+            maskLayer.path = path.cgPath
+            view.layer.mask = maskLayer
+        }
+
+        // Label
+        let label = PaddingLabel(frame: CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: view.frame.width - textEdgeInsets.left - textEdgeInsets.right, height: view.frame.height - textEdgeInsets.top))
+        var name = courseItem.courseName
+        if courseItemMaxNameLength > 0 { name.truncate(courseItemMaxNameLength) }
+
+        let attrStr = NSMutableAttributedString(string: name + "\n" + courseItem.roomName,
+                                                attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: roomNameFontSize)])
+        attrStr.setAttributes([NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: courseItemTextSize)], range: NSRange(0..<name.count))
+        label.attributedText = attrStr
+        label.textColor = courseItem.textColor ?? .white
+        label.numberOfLines = 0
+        label.tag = index
+        label.textAlignment = courseTextAlignment
+        view.addSubview(label)
+
+        // Gesture
+        let tap = UITapGestureRecognizer(target: self, action: #selector(lectureTapped))
+        let long = UILongPressGestureRecognizer(target: self, action: #selector(lectureLongPressed))
+        view.addGestureRecognizer(tap)
+        view.addGestureRecognizer(long)
+        view.isUserInteractionEnabled = true
+
+        collectionView.addSubview(view)
+    }
     
-    let tap = UITapGestureRecognizer(target: self, action: #selector(dayTapped))
-    label.addGestureRecognizer(tap)
-    
-    collectionView.addSubview(label)
+    // Gün başlıkları
+    for (index, symbol) in daySymbols.enumerated() {
+        let labelFrame = CGRect(x: collectionView.bounds.minX + widthOfTimeAxis + averageWidth * CGFloat(index),
+                                y: collectionView.frame.minY,
+                                width: averageWidth,
+                                height: heightOfDaySection)
+        let label = UILabel(frame: labelFrame)
+        label.text = symbol
+        label.textAlignment = .center
+        label.font = UIFont.systemFont(ofSize: symbolFontSize, weight: .medium)
+        label.textColor = weekDayTextColor
+        label.isUserInteractionEnabled = true
+        label.tag = index
+        label.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dayTapped)))
+        collectionView.addSubview(label)
+    }
 }
 
-    }
     
     @objc func lectureLongPressed(_ sender: UILongPressGestureRecognizer) {
     if sender.state == .began {
