@@ -12,6 +12,8 @@ public protocol ElliotableDelegate {
     func elliotable(elliotable: Elliotable, didSelectCourse selectedCourse: ElliottEvent)
     
     func elliotable(elliotable: Elliotable, didLongSelectCourse longSelectedCourse : ElliottEvent)
+
+    func elliotable(elliotable: Elliotable, didSelectDay dayIndex: Int, dayName: String)
 }
 
 public protocol ElliotableDataSource {
@@ -392,6 +394,28 @@ public enum roundOption: Int {
             view.addSubview(label)
             collectionView.addSubview(view)
         }
+        // Gün başlıklarını ekle
+for (index, symbol) in daySymbols.enumerated() {
+    let labelFrame = CGRect(
+        x: collectionView.bounds.minX + widthOfTimeAxis + averageWidth * CGFloat(index),
+        y: collectionView.frame.minY,
+        width: averageWidth,
+        height: heightOfDaySection
+    )
+    let label = UILabel(frame: labelFrame)
+    label.text = symbol
+    label.textAlignment = .center
+    label.font = UIFont.systemFont(ofSize: symbolFontSize, weight: .medium)
+    label.textColor = weekDayTextColor
+    label.isUserInteractionEnabled = true
+    label.tag = index
+    
+    let tap = UITapGestureRecognizer(target: self, action: #selector(dayTapped(_:)))
+    label.addGestureRecognizer(tap)
+    
+    collectionView.addSubview(label)
+}
+
     }
     
     @objc func lectureLongPressed(_ sender: UILongPressGestureRecognizer) {
