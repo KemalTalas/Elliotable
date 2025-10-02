@@ -245,119 +245,83 @@ public enum roundOption: Int {
     }
     
 private func makeTimeTable() {
-    var minStartTimeHour: Int = defaultMinHour
-    var maxEndTimeHour: Int = defaultMaxEnd
-
-    // courseItems üzerinden min/max saat hesapla
-    if !courseItems.isEmpty {
-        for courseItem in courseItems {
-            let startHour = Int(courseItem.startTime.split(separator: ":")[0]) ?? defaultMinHour
-            let endHour   = Int(courseItem.endTime.split(separator: ":")[0]) ?? defaultMaxEnd
-
-            if startHour < minStartTimeHour { minStartTimeHour = startHour }
-            if endHour > maxEndTimeHour { maxEndTimeHour = endHour }
+    collectionView.subviews.forEach { view in
+        if !(view is UICollectionViewCell) {
+            view.removeFromSuperview()
         }
     }
-    minimumCourseStartTime = minStartTimeHour
-
-    // CollectionView layout ve reload
-    collectionView.reloadData()
-    collectionView.collectionViewLayout.invalidateLayout()
-
-    // Eskiden eklenmiş manuel course view'leri sil
-    collectionView.subviews.forEach {
-        if $0 is UIView && !($0 is UICollectionViewCell) {
-            $0.removeFromSuperview()
-        }
+    
+    guard let courseItems = self.dataSource?.courseItems(in: self), courseItems.count > 0 else {
+        minimumCourseStartTime = defaultMinHour
+        return
     }
-
-    // courseItems üzerinden yeni view ekle
+    
+    // Minimum ve maksimum saat
+    let startHours = courseItems.compactMap { Int($0.startTime.split(separator: ":")[0]) }
+    let endHours   = courseItems.compactMap { Int($0.endTime.split(separator: ":")[0]) }
+    
+    let minStart = startHours.min() ?? defaultMinHour
+    let maxEnd   = (endHours.max() ?? defaultMaxEnd) + 1
+    minimumCourseStartTime = minStart
+    
+    let dayCount = dataSource?.numberOfDays(in: self) ?? 7
+    let averageHeight = courseItemHeight
+    
+    // Lecture’ları çiz
     for (index, courseItem) in courseItems.enumerated() {
-        let dayCount = dataSource?.numberOfDays(in: self) ?? 6
         let weekdayIndex = (courseItem.courseDay.rawValue - startDay.rawValue + dayCount) % dayCount
-
+        
         let startParts = courseItem.startTime.split(separator: ":").compactMap { Int($0) }
         let endParts   = courseItem.endTime.split(separator: ":").compactMap { Int($0) }
-
+        
         guard startParts.count == 2, endParts.count == 2 else { continue }
-
-        let courseStartHour = startParts[0]
-        let courseStartMin  = startParts[1]
-        let courseEndHour   = endParts[0]
-        let courseEndMin    = endParts[1]
-
-        let averageHeight = courseItemHeight
-
-        let positionX = collectionView.bounds.minX + widthOfTimeAxis + averageWidth * CGFloat(weekdayIndex) + rectEdgeInsets.left
-        let positionY = collectionView.frame.minY + heightOfDaySection + averageHeight * CGFloat(courseStartHour - minStartTimeHour) +
-                        CGFloat((CGFloat(courseStartMin) / 60) * averageHeight) + rectEdgeInsets.top
-
-        let width = averageWidth
-        let height = averageHeight * CGFloat(courseEndHour - courseStartHour) +
-                     CGFloat((CGFloat(courseEndMin - courseStartMin) / 60) * averageHeight) - rectEdgeInsets.top - rectEdgeInsets.bottom
-
-        // Course view oluştur
-        let view = UIView(frame: CGRect(x: positionX, y: positionY, width: width, height: height))
-        view.backgroundColor = courseItem.backgroundColor
-        view.tag = index
-
-        // Rounded corners
-        switch roundCorner {
-        case .none: view.layer.cornerRadius = 0
-        case .left:
-            let path = UIBezierPath(roundedRect: view.bounds,
-                                    byRoundingCorners: [.topLeft, .bottomRight],
-                                    cornerRadii: CGSize(width: borderCornerRadius, height: borderCornerRadius))
-            let maskLayer = CAShapeLayer()
-            maskLayer.path = path.cgPath
-            view.layer.mask = maskLayer
-        case .right:
-            let path = UIBezierPath(roundedRect: view.bounds,
-                                    byRoundingCorners: [.topRight, .bottomLeft],
-                                    cornerRadii: CGSize(width: borderCornerRadius, height: borderCornerRadius))
-            let maskLayer = CAShapeLayer()
-            maskLayer.path = path.cgPath
-            view.layer.mask = maskLayer
-        case .all:
-            let path = UIBezierPath(roundedRect: view.bounds,
-                                    byRoundingCorners: [.topLeft, .topRight, .bottomLeft, .bottomRight],
-                                    cornerRadii: CGSize(width: borderCornerRadius, height: borderCornerRadius))
-            let maskLayer = CAShapeLayer()
-            maskLayer.path = path.cgPath
-            view.layer.mask = maskLayer
-        }
-
+        
+        let startHour = startParts[0]
+        let startMin  = startParts[1]
+        let endHour   = endParts[0]
+        let endMin    = endParts[1]
+        
+        let positionX = widthOfTimeAxis + averageWidth * CGFloat(weekdayIndex) + rectEdgeInsets.left
+        let positionY = heightOfDaySection + averageHeight * CGFloat(startHour - minStart) +
+                        (CGFloat(startMin) / 60.0) * averageHeight + rectEdgeInsets.top
+        let width = averageWidth - rectEdgeInsets.left - rectEdgeInsets.right
+        let height = averageHeight * CGFloat(endHour - startHour) +
+                     (CGFloat(endMin - startMin) / 60.0) * averageHeight -
+                     rectEdgeInsets.top - rectEdgeInsets.bottom
+        
+        let courseView = UIView(frame: CGRect(x: positionX, y: positionY, width: width, height: height))
+        courseView.backgroundColor = courseItem.backgroundColor
+        courseView.layer.cornerRadius = (roundCorner == .all) ? borderCornerRadius : 0
+        courseView.tag = index
+        
         // Label
-        let label = PaddingLabel(frame: CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: view.frame.width - textEdgeInsets.left - textEdgeInsets.right, height: view.frame.height - textEdgeInsets.top))
-        var name = courseItem.courseName
-        if courseItemMaxNameLength > 0 { name.truncate(courseItemMaxNameLength) }
-
+        let label = PaddingLabel(frame: CGRect(x: textEdgeInsets.left, y: textEdgeInsets.top, width: width - textEdgeInsets.left - textEdgeInsets.right, height: height - textEdgeInsets.top))
+        let name = courseItem.courseName
         let attrStr = NSMutableAttributedString(string: name + "\n" + courseItem.roomName,
                                                 attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: roomNameFontSize)])
         attrStr.setAttributes([NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: courseItemTextSize)], range: NSRange(0..<name.count))
         label.attributedText = attrStr
-        label.textColor = courseItem.textColor ?? .white
         label.numberOfLines = 0
-        label.tag = index
         label.textAlignment = courseTextAlignment
-        view.addSubview(label)
-
+        label.textColor = courseItem.textColor ?? .white
+        label.isUserInteractionEnabled = false
+        courseView.addSubview(label)
+        
         // Gesture
-        let tap = UITapGestureRecognizer(target: self, action: #selector(lectureTapped))
-        let long = UILongPressGestureRecognizer(target: self, action: #selector(lectureLongPressed))
-        view.addGestureRecognizer(tap)
-        view.addGestureRecognizer(long)
-        view.isUserInteractionEnabled = true
-
-        collectionView.addSubview(view)
+        courseView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(lectureTapped)))
+        courseView.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(lectureLongPressed)))
+        
+        self.addSubview(courseView)
     }
     
-    // Gün başlıkları
+    // Gün başlıklarını çiz
     for (index, symbol) in daySymbols.enumerated() {
-        let labelFrame = CGRect(x: collectionView.bounds.minX + widthOfTimeAxis + averageWidth * CGFloat(index),
-                                y: collectionView.frame.minY,
-                                width: averageWidth,
-                                height: heightOfDaySection)
+        let labelFrame = CGRect(
+            x: widthOfTimeAxis + averageWidth * CGFloat(index),
+            y: 0,
+            width: averageWidth,
+            height: heightOfDaySection
+        )
         let label = UILabel(frame: labelFrame)
         label.text = symbol
         label.textAlignment = .center
@@ -365,10 +329,12 @@ private func makeTimeTable() {
         label.textColor = weekDayTextColor
         label.isUserInteractionEnabled = true
         label.tag = index
+        
         label.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dayTapped)))
-        collectionView.addSubview(label)
+        self.addSubview(label)
     }
 }
+
 
     
     @objc func lectureLongPressed(_ sender: UILongPressGestureRecognizer) {
