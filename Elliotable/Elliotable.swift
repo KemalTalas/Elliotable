@@ -410,7 +410,7 @@ for (index, symbol) in daySymbols.enumerated() {
     label.isUserInteractionEnabled = true
     label.tag = index
     
-    let tap = UITapGestureRecognizer(target: self, action: #selector(dayTapped(_:)))
+    let tap = UITapGestureRecognizer(target: self, action: #selector(dayTapped))
     label.addGestureRecognizer(tap)
     
     collectionView.addSubview(label)
@@ -429,6 +429,13 @@ for (index, symbol) in daySymbols.enumerated() {
         let course = courseItems[(sender.view!).tag]
         self.delegate?.elliotable(elliotable: self, didSelectCourse: course)
     }
+
+    @objc private func dayTapped(_ sender: UITapGestureRecognizer) {
+    guard let label = sender.view as? UILabel else { return }
+    let index = label.tag
+    let symbol = daySymbols[index]
+    delegate?.elliotable(elliotable: self, didSelectDay: index, dayName: symbol)
+}
     
     public func reloadData() {
         courseItems = self.dataSource?.courseItems(in: self) ?? [ElliottEvent]()
