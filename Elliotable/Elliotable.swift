@@ -297,8 +297,6 @@ public enum roundOption: Int {
                         maxEndTimeHour = tempEndTimeHour
                     }
                 }
-                    view.tag = index
-                    label.tag = index
             }
             maxEndTimeHour += 1
         }
