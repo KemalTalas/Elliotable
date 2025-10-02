@@ -426,7 +426,8 @@ for (index, symbol) in daySymbols.enumerated() {
     }
     
     @objc func lectureTapped(_ sender: UITapGestureRecognizer) {
-        let course = courseItems[(sender.view!).tag]
+        let courseArray = self.dataSource?.courseItems(in: self) ?? [ElliottEvent]()
+        let course = courseArray[(sender.view!).tag]
         self.delegate?.elliotable(elliotable: self, didSelectCourse: course)
     }
 
