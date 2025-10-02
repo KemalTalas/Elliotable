@@ -274,7 +274,7 @@ public enum roundOption: Int {
             }
         }
         // DataSource Delegate
-        let courseItems = self.dataSource?.courseItems(in: self) ?? [ElliottEvent]()
+        self.courseItems = self.dataSource?.courseItems(in: self) ?? []
         
         if courseItems.count < 1 {
             minStartTimeHour = defaultMinHour
@@ -297,6 +297,8 @@ public enum roundOption: Int {
                         maxEndTimeHour = tempEndTimeHour
                     }
                 }
+                    view.tag = index
+                    label.tag = index
             }
             maxEndTimeHour += 1
         }
@@ -392,6 +394,8 @@ public enum roundOption: Int {
             
             view.isUserInteractionEnabled = true
             view.addSubview(label)
+                view.tag = index
+                label.tag = index
             collectionView.addSubview(view)
         }
         // Gün başlıklarını ekle
@@ -419,15 +423,19 @@ for (index, symbol) in daySymbols.enumerated() {
     }
     
     @objc func lectureLongPressed(_ sender: UILongPressGestureRecognizer) {
-        if sender.state == .began {
-            let course = courseItems[(sender.view!).tag]
-            self.delegate?.elliotable(elliotable: self, didLongSelectCourse: course)
-        }
+    if sender.state == .began {
+        guard let tag = sender.view?.tag,
+              tag >= 0, tag < courseItems.count else { return }
+        let course = courseItems[tag]
+        delegate?.elliotable(elliotable: self, didLongSelectCourse: course)
+    }
     }
     
     @objc func lectureTapped(_ sender: UITapGestureRecognizer) {
-        let course = courseItems[(sender.view!).tag]
-        self.delegate?.elliotable(elliotable: self, didSelectCourse: course)
+    guard let tag = sender.view?.tag,
+          tag >= 0, tag < courseItems.count else { return }
+    let course = courseItems[tag]
+    delegate?.elliotable(elliotable: self, didSelectCourse: course)
     }
 
     @objc private func dayTapped(_ sender: UITapGestureRecognizer) {
