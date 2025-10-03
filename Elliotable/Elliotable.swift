@@ -420,7 +420,8 @@ for (index, symbol) in daySymbols.enumerated() {
     
     @objc func lectureLongPressed(_ sender: UILongPressGestureRecognizer) {
         if sender.state == .began {
-            let course = courseItems[(sender.view!).tag]
+            let courseArray = self.dataSource?.courseItems(in: self) ?? [ElliottEvent]()
+            let course = courseArray[(sender.view!).tag]
             self.delegate?.elliotable(elliotable: self, didLongSelectCourse: course)
         }
     }
