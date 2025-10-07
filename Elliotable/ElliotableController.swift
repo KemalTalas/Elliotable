@@ -47,7 +47,12 @@ extension ElliotableController: UICollectionViewDataSource {
                     }
                 }
             }
-            maxEndTimeHour += 1
+            if maxEndTimeHour >= 23 {
+                maxEndTimeHour = 23
+                } else {
+                maxEndTimeHour += 1
+            }
+
         }
         
         // The number of rows in timetable
