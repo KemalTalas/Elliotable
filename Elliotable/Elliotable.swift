@@ -298,7 +298,12 @@ public enum roundOption: Int {
                     }
                 }
             }
-            maxEndTimeHour += 1
+            if maxEndTimeHour >= 24 {
+                maxEndTimeHour = 23
+                } else {
+                maxEndTimeHour += 1
+                }
+
         }
         minimumCourseStartTime = minStartTimeHour
         
