@@ -298,7 +298,7 @@ public enum roundOption: Int {
                     }
                 }
             }
-            if maxEndTimeHour >= 24 {
+            if maxEndTimeHour >= 23 {
                 maxEndTimeHour = 23
                 } else {
                 maxEndTimeHour += 1
