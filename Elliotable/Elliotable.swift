@@ -212,10 +212,20 @@ public enum roundOption: Int {
     
     public var minimumCourseStartTime: Int?
     
+    // Elliotable.swift içindeki averageWidth kısmını değiştir
     var averageWidth: CGFloat {
-        let width = (collectionView.frame.width - widthOfTimeAxis) / CGFloat(daySymbols.count)
-        return width * avgmultiplier
+        let totalWidth = collectionView.frame.width
+        let widthOfTime = widthOfTimeAxis
+        let minWidthPerCell: CGFloat = 50   // Hücre minimum genişliği
+        let maxWidthPerCell: CGFloat = 80   // Hücre maksimum genişliği
+
+        let remainingWidth = totalWidth - widthOfTime
+        let width = remainingWidth / CGFloat(daySymbols.count)
+        
+        // min-max sınırlarını uygula
+        return max(min(width, maxWidthPerCell), minWidthPerCell)
     }
+
     
     public override init(frame: CGRect) {
         super.init(frame: frame)
