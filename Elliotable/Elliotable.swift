@@ -193,6 +193,8 @@ public enum roundOption: Int {
         }
     }
     
+    public var avgmultiplier = 1.0;
+    
     public var daySymbols: [String] {
         var daySymbolText = [String]()
         
@@ -211,7 +213,8 @@ public enum roundOption: Int {
     public var minimumCourseStartTime: Int?
     
     var averageWidth: CGFloat {
-        return (collectionView.frame.width - widthOfTimeAxis) / CGFloat(daySymbols.count)
+        let width = (collectionView.frame.width - widthOfTimeAxis) / CGFloat(daySymbols.count)
+        return width * avgmultiplier
     }
     
     public override init(frame: CGRect) {
