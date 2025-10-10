@@ -213,18 +213,36 @@ public enum roundOption: Int {
     public var minimumCourseStartTime: Int?
     
     // Elliotable.swift içindeki averageWidth kısmını değiştir
+    // MARK: - Fixed averageWidth for all devices (Elliotable v1.2.5)
     var averageWidth: CGFloat {
-        let totalWidth = collectionView.frame.width
-        let widthOfTime = widthOfTimeAxis
-        let minWidthPerCell: CGFloat = 50   // Hücre minimum genişliği
-        let maxWidthPerCell: CGFloat = 80   // Hücre maksimum genişliği
+        guard daySymbols.count > 0 else { return 0 }
 
+        // Layout hazır değilse, önce hesaplat
+        collectionView.layoutIfNeeded()
+
+        let totalWidth = collectionView.bounds.width
+        let widthOfTime = widthOfTimeAxis
         let remainingWidth = totalWidth - widthOfTime
-        let width = remainingWidth / CGFloat(daySymbols.count)
-        
-        // min-max sınırlarını uygula
-        return width
+
+        // Gün sayısına göre temel genişlik
+        let rawWidth = remainingWidth / CGFloat(daySymbols.count)
+
+        // iPad ve yüksek DPI ekranlar için yuvarlama (tam piksel hizalaması)
+        let screenScale = UIScreen.main.scale
+        let roundedWidth = (floor(rawWidth * screenScale)) / screenScale
+
+        // Ekran farklarını minimize etmek için son hücredeki farkı dengele
+        let totalUsed = roundedWidth * CGFloat(daySymbols.count)
+        let leftover = remainingWidth - totalUsed
+
+        // Eğer ufak fark kaldıysa son hücreye ekle (kaymayı engeller)
+        if abs(leftover) < 1.0 {
+            return roundedWidth + leftover / CGFloat(daySymbols.count)
+        }
+
+        return roundedWidth
     }
+
 
     
     public override init(frame: CGRect) {
@@ -254,6 +272,7 @@ public enum roundOption: Int {
         collectionView.frame = bounds
         collectionView.reloadData()
         collectionView.collectionViewLayout.invalidateLayout()
+        collectionView.layoutIfNeeded()
         makeTimeTable()
     }
     
