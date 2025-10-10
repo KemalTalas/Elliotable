@@ -223,7 +223,7 @@ public enum roundOption: Int {
         let width = remainingWidth / CGFloat(daySymbols.count)
         
         // min-max sınırlarını uygula
-        return max(min(width, maxWidthPerCell), minWidthPerCell)
+        return width
     }
 
     
